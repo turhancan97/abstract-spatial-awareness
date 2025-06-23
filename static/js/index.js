@@ -77,7 +77,7 @@ $(document).ready(function() {
 
 })
 
-// === Unreal Engine Video Demo Section ===
+// === Unreal Engine Video Demo Section (Progressive Preload) ===
 $(document).ready(function() {
   // Paths and frame counts (update these if your frame counts change)
   const OBSTACLE_PATH = './static/images/Occlusion/SM_vehCar_vehicle06_LOD_Original/';
@@ -94,13 +94,84 @@ $(document).ready(function() {
   const BG_LEVELS = [0, 1, 2, 3];
   const BG_MODEL = 'SM_vehCar_vehicle06_LOD_Original';
 
+  // Spinner HTML
+  const SPINNER_HTML = '<span class="icon is-large"><i class="fas fa-spinner fa-pulse fa-2x"></i></span>';
+
+  // For progressive loading
+  let currentFrames = [];
+  let currentLoading = null;
+  let currentFrameCount = 0;
+
+  function cancelCurrentLoading() {
+    if (currentLoading && typeof currentLoading.cancel === 'function') {
+      currentLoading.cancel();
+    }
+    currentFrames = [];
+    currentLoading = null;
+    currentFrameCount = 0;
+  }
+
+  function progressivePreloadFrames(basePath, prefix, digits, ext, frameCount, imgId, sliderId, labelId, containerId) {
+    cancelCurrentLoading();
+    currentFrames = new Array(frameCount);
+    currentFrameCount = frameCount;
+    let cancelled = false;
+    currentLoading = { cancel: () => { cancelled = true; } };
+
+    // Show spinner for first frame
+    $(`#${imgId}`).parent().html(`<div id="${imgId}-wrapper">${SPINNER_HTML}</div>`);
+    $(`#${labelId}`).text(`Frame 1 / ${frameCount}`);
+
+    function loadFrame(idx) {
+      if (cancelled) return;
+      const frameStr = String(idx).padStart(digits, '0');
+      const img = new Image();
+      img.onload = function() {
+        currentFrames[idx] = img;
+        // If this is the currently displayed frame, update it
+        const sliderVal = parseInt($(`#${sliderId}`).val());
+        if (sliderVal === idx) {
+          $(`#${imgId}-wrapper`).empty().append(img);
+        }
+      };
+      img.onerror = function() {
+        // Optionally handle error
+      };
+      img.src = `${basePath}${prefix}${frameStr}${ext}`;
+    }
+
+    // Preload all frames progressively
+    for (let i = 0; i < frameCount; i++) {
+      loadFrame(i);
+    }
+
+    // Slider handler
+    $(`#${sliderId}`).off('input').on('input', function() {
+      const idx = parseInt(this.value);
+      $(`#${labelId}`).text(`Frame ${idx+1} / ${frameCount}`);
+      if (currentFrames[idx]) {
+        $(`#${imgId}-wrapper`).empty().append(currentFrames[idx]);
+      } else {
+        $(`#${imgId}-wrapper`).html(SPINNER_HTML);
+      }
+    });
+
+    // Show first frame as soon as it's loaded
+    let checkFirstLoaded = setInterval(() => {
+      if (cancelled) { clearInterval(checkFirstLoaded); return; }
+      if (currentFrames[0]) {
+        $(`#${imgId}-wrapper`).empty().append(currentFrames[0]);
+        clearInterval(checkFirstLoaded);
+      }
+    }, 50);
+  }
+
   function renderObstacleSlider() {
+    cancelCurrentLoading();
     let html = `
       <div class="box">
         <h3 class="title is-5">Obstacle (Occlusion)</h3>
-        <div class="has-text-centered mb-3">
-          <img id="obstacle-frame-img" src="${OBSTACLE_PATH}${OBSTACLE_PREFIX}${'000'}${OBSTACLE_EXT}" style="max-width:100%; max-height:400px;" />
-        </div>
+        <div class="has-text-centered mb-3"><div id="obstacle-frame-img-wrapper">${SPINNER_HTML}</div></div>
         <input id="obstacle-slider" class="slider is-fullwidth is-info" step="1" min="0" max="${OBSTACLE_FRAME_COUNT-1}" value="0" type="range">
         <div class="has-text-centered mt-2">
           <span id="obstacle-frame-label">Frame 1 / ${OBSTACLE_FRAME_COUNT}</span>
@@ -108,15 +179,14 @@ $(document).ready(function() {
       </div>
     `;
     $('#ue-video-dynamic-content').html(html);
-    $('#obstacle-slider').on('input', function() {
-      const idx = parseInt(this.value);
-      const frameStr = String(idx).padStart(OBSTACLE_DIGITS, '0');
-      $('#obstacle-frame-img').attr('src', `${OBSTACLE_PATH}${OBSTACLE_PREFIX}${frameStr}${OBSTACLE_EXT}`);
-      $('#obstacle-frame-label').text(`Frame ${idx+1} / ${OBSTACLE_FRAME_COUNT}`);
-    });
+    progressivePreloadFrames(
+      OBSTACLE_PATH, OBSTACLE_PREFIX, OBSTACLE_DIGITS, OBSTACLE_EXT, OBSTACLE_FRAME_COUNT,
+      'obstacle-frame-img', 'obstacle-slider', 'obstacle-frame-label', 'obstacle-frame-img-wrapper'
+    );
   }
 
   function renderBgTypeSelector() {
+    cancelCurrentLoading();
     let html = '<div class="box"><h3 class="title is-5">Background Complexity</h3>';
     html += '<div class="buttons is-centered mb-3">';
     BG_TYPES.forEach((type, i) => {
@@ -137,24 +207,21 @@ $(document).ready(function() {
   }
 
   function renderBgSlider(typeKey, level) {
+    cancelCurrentLoading();
     const type = BG_TYPES.find(t => t.key === typeKey);
     const path = `${BG_BASE}${type.key}/level-${level}/${BG_MODEL}/`;
     let html = `
-      <div class="has-text-centered mb-3">
-        <img id="bg-frame-img" src="${path}${type.prefix}${'000'}${type.ext}" style="max-width:100%; max-height:400px;" />
-      </div>
+      <div class="has-text-centered mb-3"><div id="bg-frame-img-wrapper">${SPINNER_HTML}</div></div>
       <input id="bg-slider" class="slider is-fullwidth is-link" step="1" min="0" max="${type.frameCount-1}" value="0" type="range">
       <div class="has-text-centered mt-2">
         <span id="bg-frame-label">Frame 1 / ${type.frameCount}</span>
       </div>
     `;
     $('#bg-slider-container').html(html);
-    $('#bg-slider').on('input', function() {
-      const idx = parseInt(this.value);
-      const frameStr = String(idx).padStart(type.digits, '0');
-      $('#bg-frame-img').attr('src', `${path}${type.prefix}${frameStr}${type.ext}`);
-      $('#bg-frame-label').text(`Frame ${idx+1} / ${type.frameCount}`);
-    });
+    progressivePreloadFrames(
+      path, type.prefix, type.digits, type.ext, type.frameCount,
+      'bg-frame-img', 'bg-slider', 'bg-frame-label', 'bg-frame-img-wrapper'
+    );
   }
 
   // Main button handlers
@@ -169,7 +236,6 @@ $(document).ready(function() {
   $('#ue-video-dynamic-content').on('click', '.bg-type-btn', function() {
     const typeKey = $(this).data('type');
     renderBgLevelSelector(typeKey);
-    // Store selected type for next step
     $('#bg-level-selector').data('selected-type', typeKey);
   });
   $('#ue-video-dynamic-content').on('click', '.bg-level-btn', function() {
@@ -178,4 +244,4 @@ $(document).ready(function() {
     renderBgSlider(typeKey, level);
   });
 });
-// === End Unreal Engine Video Demo Section ===
+// === End Unreal Engine Video Demo Section (Progressive Preload) ===
