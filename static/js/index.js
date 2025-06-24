@@ -80,11 +80,16 @@ $(document).ready(function() {
 // === Unreal Engine Video Demo Section (Progressive Preload) ===
 $(document).ready(function() {
   // Paths and frame counts (update these if your frame counts change)
-  const OBSTACLE_PATH = './static/images/Occlusion/SM_vehCar_vehicle06_LOD_Original/';
+  const OBSTACLE_ASSETS = [
+    { name: 'bicycle', label: 'Bicycle', frameCount: 540 },
+    { name: 'car', label: 'Car', frameCount: 540 },
+    { name: 'cyclist', label: 'Cyclist', frameCount: 540 },
+    { name: 'motorcycle', label: 'Motorcycle', frameCount: 540 },
+    { name: 'motorcyclist', label: 'Motorcyclist', frameCount: 540 }
+  ];
   const OBSTACLE_PREFIX = 'objectcentric_orbit_';
   const OBSTACLE_DIGITS = 3;
   const OBSTACLE_EXT = '.jpg';
-  const OBSTACLE_FRAME_COUNT = 59; // Update if more frames are added
 
   const BG_BASE = './static/images/Background Complexity/';
   const BG_TYPES = [
@@ -92,7 +97,7 @@ $(document).ready(function() {
     { key: 'Frames_Line', label: 'Frames Line', prefix: 'egocentric_fly_', digits: 3, ext: '.jpg', frameCount: 539 }
   ];
   const BG_LEVELS = [0, 1, 2, 3];
-  const BG_MODEL = 'SM_vehCar_vehicle06_LOD_Original';
+  const BG_MODEL = 'car';
 
   // Spinner HTML
   const SPINNER_HTML = '<span class="icon is-large"><i class="fas fa-spinner fa-pulse fa-2x"></i></span>';
@@ -166,21 +171,31 @@ $(document).ready(function() {
     }, 50);
   }
 
-  function renderObstacleSlider() {
+  function renderObstacleAssetSelector() {
     cancelCurrentLoading();
+    let html = `<div class="box">
+      <h3 class="title is-5">Obstacle (Occlusion)</h3>
+      <div class="buttons is-centered mb-3">`;
+    OBSTACLE_ASSETS.forEach(asset => {
+      html += `<button class="button is-link obstacle-asset-btn" data-asset="${asset.name}" data-frame-count="${asset.frameCount}">${asset.label}</button>`;
+    });
+    html += `</div><div id="obstacle-slider-container"></div></div>`;
+    $('#ue-video-dynamic-content').html(html);
+  }
+
+  function renderObstacleSliderForAsset(assetName, frameCount) {
+    cancelCurrentLoading();
+    const assetPath = `./static/images/Occlusion/${assetName}/`;
     let html = `
-      <div class="box">
-        <h3 class="title is-5">Obstacle (Occlusion)</h3>
-        <div class="has-text-centered mb-3"><div id="obstacle-frame-img-wrapper">${SPINNER_HTML}</div></div>
-        <input id="obstacle-slider" class="slider is-fullwidth is-info" step="1" min="0" max="${OBSTACLE_FRAME_COUNT-1}" value="0" type="range">
-        <div class="has-text-centered mt-2">
-          <span id="obstacle-frame-label">Frame 1 / ${OBSTACLE_FRAME_COUNT}</span>
-        </div>
+      <div class="has-text-centered mb-3"><div id="obstacle-frame-img-wrapper">${SPINNER_HTML}</div></div>
+      <input id="obstacle-slider" class="slider is-fullwidth is-info" step="1" min="0" max="${frameCount-1}" value="0" type="range">
+      <div class="has-text-centered mt-2">
+        <span id="obstacle-frame-label">Frame 1 / ${frameCount}</span>
       </div>
     `;
-    $('#ue-video-dynamic-content').html(html);
+    $('#obstacle-slider-container').html(html);
     progressivePreloadFrames(
-      OBSTACLE_PATH, OBSTACLE_PREFIX, OBSTACLE_DIGITS, OBSTACLE_EXT, OBSTACLE_FRAME_COUNT,
+      assetPath, OBSTACLE_PREFIX, OBSTACLE_DIGITS, OBSTACLE_EXT, frameCount,
       'obstacle-frame-img', 'obstacle-slider', 'obstacle-frame-label', 'obstacle-frame-img-wrapper'
     );
   }
@@ -226,7 +241,7 @@ $(document).ready(function() {
 
   // Main button handlers
   $('#btn-obstacle').on('click', function() {
-    renderObstacleSlider();
+    renderObstacleAssetSelector();
   });
   $('#btn-bg-complexity').on('click', function() {
     renderBgTypeSelector();
@@ -242,6 +257,12 @@ $(document).ready(function() {
     const level = $(this).data('level');
     const typeKey = $('#bg-level-selector').data('selected-type');
     renderBgSlider(typeKey, level);
+  });
+  // Obstacle asset selection
+  $('#ue-video-dynamic-content').on('click', '.obstacle-asset-btn', function() {
+    const assetName = $(this).data('asset');
+    const frameCount = parseInt($(this).data('frame-count'));
+    renderObstacleSliderForAsset(assetName, frameCount);
   });
 });
 // === End Unreal Engine Video Demo Section (Progressive Preload) ===
