@@ -85,7 +85,21 @@ $(document).ready(function() {
     { name: 'car', label: 'Car', frameCount: 540 },
     { name: 'cyclist', label: 'Cyclist', frameCount: 540 },
     { name: 'motorcycle', label: 'Motorcycle', frameCount: 540 },
-    { name: 'motorcyclist', label: 'Motorcyclist', frameCount: 540 }
+    { name: 'motorcyclist', label: 'Motorcyclist', frameCount: 540 },
+    { name: 'sofa', label: 'Sofa', frameCount: 540 },
+    { name: 'cone', label: 'Cone', frameCount: 540 },
+    { name: 'human', label: 'Human', frameCount: 540 },
+    { name: 'tree', label: 'Tree', frameCount: 540 },
+    { name: 'plant', label: 'Plant', frameCount: 540 },
+    { name: 'table', label: 'Table', frameCount: 540 },
+    { name: 'bed', label: 'Bed', frameCount: 540 },
+    { name: 'washing_machine', label: 'Washing Machine', frameCount: 540 },
+    { name: 'fridge', label: 'Fridge', frameCount: 540 },
+    { name: 'bear', label: 'Bear', frameCount: 540 },
+    { name: 'lion', label: 'Lion', frameCount: 540 },
+    { name: 'horse', label: 'Horse', frameCount: 540 },
+    { name: 'dog', label: 'Dog', frameCount: 540 },
+    { name: 'cat', label: 'Cat', frameCount: 540 }
   ];
   const OBSTACLE_PREFIX = 'objectcentric_orbit_';
   const OBSTACLE_DIGITS = 3;
